@@ -35,9 +35,14 @@ test-badgerdb:
 	@go test $(PACKAGES) -tags badgerdb -v
 .PHONY: test-badgerdb
 
+test-pebbledb:
+	@echo "--> Running go test"
+	@go test $(PACKAGES) -tags pebbledb -v
+PHONY: test-pebbledb
+
 test-all:
 	@echo "--> Running go test"
-	@go test $(PACKAGES) -tags cleveldb,boltdb,rocksdb,badgerdb -v
+	@go test $(PACKAGES) -tags cleveldb,boltdb,rocksdb,badgerdb,pebbledb -v
 .PHONY: test-all
 
 test-all-with-coverage:
