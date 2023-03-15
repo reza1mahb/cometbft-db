@@ -1,6 +1,6 @@
 module github.com/cometbft/cometbft-db
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20230315005856-dcb60b9212f9
@@ -8,11 +8,11 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/btree v1.1.2
 	github.com/jmhodges/levigo v1.0.0
-	github.com/stretchr/testify v1.8.1
+	github.com/linxGnu/grocksdb v1.7.15
+	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
-	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c
-	go.etcd.io/bbolt v1.3.6
-	google.golang.org/grpc v1.52.0
+	go.etcd.io/bbolt v1.3.7
+	google.golang.org/grpc v1.53.0
 )
 
 require (
@@ -41,10 +41,10 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
-	golang.org/x/net v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
-	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
