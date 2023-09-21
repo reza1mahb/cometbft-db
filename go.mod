@@ -3,7 +3,8 @@ module github.com/cometbft/cometbft-db
 go 1.20
 
 require (
-	github.com/cockroachdb/pebble v0.0.0-20230315005856-dcb60b9212f9
+	// used by cockroach v23.1.10
+	github.com/cockroachdb/pebble v0.0.0-20230807182518-7bcdd55ef1e3
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/btree v1.1.2
