@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/linxGnu/grocksdb"
 )
+
+const BlockCacheSize = 1 << 30
 
 func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
@@ -29,19 +32,12 @@ type RocksDB struct {
 var _ DB = (*RocksDB)(nil)
 
 func NewRocksDB(name string, dir string) (*RocksDB, error) {
-	// default rocksdb option, good enough for most cases, including heavy workloads.
-	// 1GB table cache, 512MB write buffer(may use 50% more on heavy workloads).
-	// compression: snappy as default, need to -lsnappy to enable.
-	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
-	bbto.SetBlockCache(grocksdb.NewLRUCache(1 << 30))
-	bbto.SetFilterPolicy(grocksdb.NewBloomFilter(10))
-
-	opts := grocksdb.NewDefaultOptions()
-	opts.SetBlockBasedTableFactory(bbto)
-	opts.SetCreateIfMissing(true)
-	opts.IncreaseParallelism(runtime.NumCPU())
-	// 1.5GB maximum memory use for writebuffer.
-	opts.OptimizeLevelStyleCompaction(512 * 1024 * 1024)
+	opts, err := loadLatestOptions(dir)
+	if err != nil {
+		return nil, err
+	}
+	// customize rocksdb options
+	opts = NewRocksdbOptions(opts)
 	return NewRocksDBWithOptions(name, dir, opts)
 }
 
@@ -201,4 +197,71 @@ func (db *RocksDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	}
 	itr := db.db.NewIterator(db.ro)
 	return newRocksDBIterator(itr, start, end, true), nil
+}
+
+// loadLatestOptions try to load options from existing db, returns nil if not exists.
+func loadLatestOptions(dir string) (*grocksdb.Options, error) {
+	opts, err := grocksdb.LoadLatestOptions(dir, grocksdb.NewDefaultEnv(), true, grocksdb.NewLRUCache(BlockCacheSize))
+	if err != nil {
+		// not found is not an error
+		if strings.HasPrefix(err.Error(), "NotFound: ") {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	cfNames := opts.ColumnFamilyNames()
+	cfOpts := opts.ColumnFamilyOpts()
+
+	for i := 0; i < len(cfNames); i++ {
+		if cfNames[i] == "default" {
+			return &cfOpts[i], nil
+		}
+	}
+
+	return opts.Options(), nil
+}
+
+// NewRocksdbOptions build options for `application.db`,
+// it overrides existing options if provided, otherwise create new one assuming it's a new database.
+func NewRocksdbOptions(opts *grocksdb.Options) *grocksdb.Options {
+	if opts == nil {
+		opts = grocksdb.NewDefaultOptions()
+		// only enable dynamic-level-bytes on new db, don't override for existing db
+		opts.SetLevelCompactionDynamicLevelBytes(true)
+	}
+	opts.SetCreateIfMissing(true)
+	opts.IncreaseParallelism(runtime.NumCPU())
+	opts.OptimizeLevelStyleCompaction(512 * 1024 * 1024)
+	opts.SetTargetFileSizeMultiplier(2)
+
+	// block based table options
+	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
+
+	// 1G block cache
+	bbto.SetBlockCache(grocksdb.NewLRUCache(BlockCacheSize))
+
+	// http://rocksdb.org/blog/2021/12/29/ribbon-filter.html
+	bbto.SetFilterPolicy(grocksdb.NewRibbonHybridFilterPolicy(9.9, 1))
+
+	// partition index
+	// http://rocksdb.org/blog/2017/05/12/partitioned-index-filter.html
+	bbto.SetIndexType(grocksdb.KTwoLevelIndexSearchIndexType)
+	bbto.SetPartitionFilters(true)
+	bbto.SetOptimizeFiltersForMemory(true)
+	// reduce memory usage
+	bbto.SetCacheIndexAndFilterBlocks(true)
+
+	opts.SetBlockBasedTableFactory(bbto)
+
+	// heavier compression option at bottommost level,
+	// 110k dict bytes is default in zstd library,
+	// train bytes is recommended to be set at 100x dict bytes.
+	opts.SetBottommostCompression(grocksdb.ZSTDCompression)
+	compressOpts := grocksdb.NewDefaultCompressionOptions()
+	compressOpts.Level = 12
+	compressOpts.MaxDictBytes = 110 * 1024
+	opts.SetBottommostCompressionOptionsZstdMaxTrainBytes(compressOpts.MaxDictBytes*100, true)
+	opts.SetBottommostCompressionOptions(compressOpts, true)
+	return opts
 }
