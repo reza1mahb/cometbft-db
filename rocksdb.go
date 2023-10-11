@@ -251,6 +251,7 @@ func NewRocksdbOptions(opts *grocksdb.Options) *grocksdb.Options {
 	bbto.SetOptimizeFiltersForMemory(true)
 	// reduce memory usage
 	bbto.SetCacheIndexAndFilterBlocks(true)
+	bbto.SetPinTopLevelIndexAndFilter(true)
 
 	opts.SetBlockBasedTableFactory(bbto)
 
