@@ -1,6 +1,6 @@
 linters:
   tests: true
-  disable-all: true
+  disable-all: false
   enable:
     - bodyclose
     - depguard
